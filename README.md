@@ -16,8 +16,6 @@ Double-click either HTML file, or serve the folder:
 python3 -m http.server 8000
 ```
 
-Keep the `assets/` folder next to the HTML files — both pages load the logo from it.
-
 Use the top tabs or the left/right arrow keys to move between stages. The lab has a
 **Presenter view** for projectors; the solution has **Show all steps** and **Print / PDF**
 for handouts.

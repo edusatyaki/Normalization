@@ -65,18 +65,6 @@
       min-width: 0;
     }
 
-    .logo-box {
-      width: 116px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      flex: 0 0 auto;
-      border-radius: 8px;
-      background: var(--white);
-    }
-
-    .logo-box img { width: 100px; height: auto; display: block; }
-
     .title-block h1 {
       margin: 0;
       font-size: clamp(1.35rem, 2.2vw, 2.15rem);
@@ -694,8 +682,6 @@
 
     @media (max-width: 620px) {
       .topbar { align-items: flex-start; flex-wrap: wrap; }
-      .logo-box { width: 98px; }
-      .logo-box img { width: 84px; }
       .top-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
       .guide-button, .presenter-button { width: 100%; white-space: normal; }
       main { width: min(100% - 28px, 1420px); }
@@ -726,7 +712,6 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="brand">
-        <div class="logo-box"><img src="assets/newton-logo.png" alt="Newton School of Technology"></div>
         <div class="title-block">
           <h1>Normalisation Lab</h1>
           <p>Watch one database evolve, one rule at a time.</p>

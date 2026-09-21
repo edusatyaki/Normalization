@@ -1,0 +1,1323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive classroom explainer for database normalisation from 1NF to 5NF.">
+  <title>Normalisation Lab</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23073B66'/%3E%3Cpath d='M18 17h28v8H26v7h17v8H26v7h20' fill='none' stroke='%2345B6D9' stroke-width='6'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --navy: #073b66;
+      --blue: #087cad;
+      --cyan: #45b6d9;
+      --ink: #17324a;
+      --muted: #5c7080;
+      --paper: #f4f8fb;
+      --white: #ffffff;
+      --line: #c9d9e4;
+      --red: #b9364b;
+      --red-soft: #fff0f2;
+      --green: #147a58;
+      --green-soft: #e9f8f1;
+      --gold: #f4c542;
+      --shadow: 0 18px 44px rgba(7, 59, 102, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+    }
+
+    button { font: inherit; }
+
+    .app-shell {
+      width: 100%;
+      min-width: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto 1fr;
+    }
+
+    .topbar {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 14px clamp(20px, 4vw, 54px);
+      background: var(--navy);
+      color: var(--white);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .logo-box {
+      width: 116px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      background: var(--white);
+    }
+
+    .logo-box img { width: 100px; height: auto; display: block; }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 2.15rem);
+      line-height: 1.05;
+      letter-spacing: -.02em;
+      overflow-wrap: anywhere;
+    }
+
+    .title-block p {
+      margin: 6px 0 0;
+      color: #cfeaf6;
+      font-size: clamp(.9rem, 1.2vw, 1rem);
+    }
+
+    .presenter-button,
+    .guide-button,
+    .primary-button,
+    .secondary-button,
+    .step-button {
+      min-height: 44px;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    .presenter-button {
+      padding: 0 18px;
+      border-radius: 999px;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .guide-button {
+      padding: 0 18px;
+      border: 1px solid rgba(255, 255, 255, .45);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--white);
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .stepper-wrap {
+      min-width: 0;
+      overflow: hidden;
+      padding: 14px clamp(20px, 4vw, 54px) 0;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stepper {
+      max-width: 1420px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .step-button {
+      position: relative;
+      padding: 10px 12px 13px;
+      border-radius: 10px 10px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .step-button small {
+      display: block;
+      margin-top: 2px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+
+    .step-button[aria-selected="true"] {
+      background: #e9f5fb;
+      color: var(--navy);
+    }
+
+    .step-button[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 0;
+      height: 4px;
+      border-radius: 4px 4px 0 0;
+      background: var(--blue);
+    }
+
+    .step-button:disabled { opacity: .45; cursor: not-allowed; }
+    .step-button:focus-visible,
+    .guide-button:focus-visible,
+    .presenter-button:focus-visible,
+    .primary-button:focus-visible,
+    .secondary-button:focus-visible {
+      outline: 4px solid rgba(69, 182, 217, .45);
+      outline-offset: 2px;
+    }
+
+    main {
+      min-width: 0;
+      width: min(1420px, calc(100% - clamp(28px, 6vw, 92px)));
+      margin: 0 auto;
+      padding: clamp(18px, 3vh, 34px) 0 30px;
+    }
+
+    .lesson-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--blue);
+      font-size: .82rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .lesson-head h2 {
+      margin: 0;
+      font-size: clamp(1.65rem, 3vw, 2.7rem);
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
+
+    .lesson-head .lead {
+      max-width: 820px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.35vw, 1.18rem);
+      line-height: 1.5;
+    }
+
+    .rule-chip {
+      width: min(360px, 100%);
+      padding: 12px 15px;
+      border-radius: 12px;
+      background: var(--navy);
+      color: var(--white);
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .clue-label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--gold);
+      font-size: .75rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .clue-copy { display: block; }
+
+    .clue-notation {
+      display: block;
+      margin-top: 7px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(255, 255, 255, .2);
+      color: #cfeaf6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+
+    .workspace {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage,
+    .coach-panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+
+    .stage { padding: clamp(16px, 2vw, 26px); }
+
+    .stage-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .stage-toolbar h3 { margin: 0; font-size: 1.05rem; }
+
+    .status-badge {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--red-soft);
+      color: var(--red);
+      font-size: .82rem;
+      font-weight: 800;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    th:last-child,
+    td:last-child { border-right: 0; }
+    tr:last-child td { border-bottom: 0; }
+
+    th {
+      background: var(--navy);
+      color: var(--white);
+      font-size: .82rem;
+      letter-spacing: .02em;
+    }
+
+    td { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9rem; }
+
+    .bad-cell {
+      background: var(--red-soft);
+      color: var(--red);
+      font-weight: 800;
+      box-shadow: inset 0 0 0 2px rgba(185, 54, 75, .25);
+    }
+
+    .stage-caption {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 16px;
+      color: var(--muted);
+    }
+
+    .stage-caption strong { color: var(--red); }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    .primary-button,
+    .secondary-button {
+      padding: 0 18px;
+      border-radius: 10px;
+      font-weight: 800;
+    }
+
+    .primary-button { background: var(--blue); color: var(--white); }
+    .secondary-button { background: #e9f5fb; color: var(--navy); }
+
+    .table-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      animation: stage-in .32s ease-out;
+    }
+
+    .table-grid.single { display: block; }
+
+    .mini-relation {
+      min-width: 0;
+    }
+
+    .relation-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 7px;
+      color: var(--navy);
+      font-weight: 800;
+    }
+
+    .relation-kind {
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .table-grid:not(.single) table { min-width: 0; }
+    .table-grid:not(.single) th,
+    .table-grid:not(.single) td { padding: 9px 10px; font-size: .8rem; }
+
+    .watch-cell {
+      background: #fff4d6;
+      color: #6e4a00;
+      font-weight: 800;
+      box-shadow: inset 0 0 0 2px rgba(244, 197, 66, .42);
+    }
+
+    @keyframes stage-in {
+      from { opacity: .25; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .table-grid { animation: none; }
+    }
+
+    .coach-panel { overflow: hidden; }
+
+    .coach-panel h3 {
+      margin: 0;
+      padding: 16px 18px;
+      background: var(--navy);
+      color: var(--white);
+      font-size: 1rem;
+    }
+
+    .coach-content { padding: 18px; }
+    .coach-content p { margin: 0; line-height: 1.5; }
+    .coach-content p + p { margin-top: 14px; }
+
+    .question {
+      color: var(--navy);
+      font-size: 1.18rem;
+      font-weight: 800;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .check-list li {
+      position: relative;
+      padding-left: 27px;
+      line-height: 1.4;
+    }
+
+    .check-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: .15em;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--red-soft);
+      box-shadow: inset 0 0 0 5px var(--red);
+    }
+
+    .teaching-note {
+      margin-top: 18px;
+      padding: 13px 14px;
+      border-radius: 10px;
+      background: #fff4d6;
+      color: #6e4a00;
+      line-height: 1.45;
+    }
+
+    .teaching-note[hidden] { display: none; }
+
+    .coach-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .reveal-button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--navy);
+      color: var(--white);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reveal-button:focus-visible {
+      outline: 4px solid rgba(69, 182, 217, .45);
+      outline-offset: 2px;
+    }
+
+    .compare-dialog {
+      width: min(1120px, calc(100% - 32px));
+      max-height: min(90vh, 820px);
+      padding: 0;
+      border: 0;
+      border-radius: 20px;
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 30px 80px rgba(7, 59, 102, .3);
+    }
+
+    .compare-dialog::backdrop { background: rgba(5, 27, 46, .72); }
+
+    .compare-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 20px 24px;
+      background: var(--navy);
+      color: var(--white);
+    }
+
+    .compare-head h2 { margin: 0; font-size: clamp(1.35rem, 2.2vw, 2rem); }
+    .compare-head p { margin: 5px 0 0; color: #cfeaf6; }
+
+    .dialog-close {
+      min-width: 44px;
+      min-height: 44px;
+      border: 1px solid rgba(255, 255, 255, .45);
+      border-radius: 50%;
+      background: transparent;
+      color: var(--white);
+      font: inherit;
+      font-size: 1.35rem;
+      cursor: pointer;
+    }
+
+    .compare-body { padding: 20px 24px 24px; }
+
+    .challenge-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-weight: 750;
+    }
+
+    .progress-track {
+      height: 8px;
+      margin-bottom: 18px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dce8ef;
+    }
+
+    .progress-fill {
+      width: 16.666%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--cyan);
+      transition: width .25s ease;
+    }
+
+    .challenge-card {
+      padding: clamp(18px, 3vw, 28px);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--white);
+    }
+
+    .challenge-card h3 {
+      max-width: 850px;
+      margin: 0;
+      color: var(--navy);
+      font-size: clamp(1.25rem, 2.4vw, 1.8rem);
+      line-height: 1.2;
+    }
+
+    .challenge-tag {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--red);
+      font-size: .78rem;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .challenge-sample {
+      margin: 18px 0 0;
+      padding: 15px 17px;
+      overflow-x: auto;
+      border-left: 5px solid var(--cyan);
+      border-radius: 10px;
+      background: #eef7fb;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.55;
+      white-space: nowrap;
+    }
+
+    .challenge-question {
+      margin: 20px 0 10px;
+      color: var(--navy);
+      font-weight: 850;
+    }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(86px, 1fr));
+      gap: 10px;
+    }
+
+    .answer-option {
+      min-height: 54px;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: var(--white);
+      color: var(--navy);
+      font-weight: 850;
+      cursor: pointer;
+      transition: transform .14s ease, border-color .14s ease, background .14s ease;
+    }
+
+    .answer-option:hover:not(:disabled) {
+      transform: translateY(-2px);
+      border-color: var(--blue);
+    }
+
+    .answer-option.correct {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .answer-option.wrong {
+      border-color: var(--red);
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .answer-option:disabled { cursor: default; opacity: .68; }
+    .answer-option.correct:disabled,
+    .answer-option.wrong:disabled { opacity: 1; }
+
+    .hint-box,
+    .quiz-feedback {
+      margin-top: 14px;
+      padding: 13px 15px;
+      border-radius: 10px;
+      line-height: 1.45;
+    }
+
+    .hint-box { background: #fff4d6; color: #6e4a00; }
+    .quiz-feedback { background: var(--green-soft); color: #125f47; }
+    .quiz-feedback.wrong-feedback { background: var(--red-soft); color: #8a2436; }
+    .hint-box[hidden], .quiz-feedback[hidden] { display: none; }
+
+    .quiz-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .quiz-actions-left,
+    .quiz-actions-right { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .quiz-actions button[hidden] { display: none; }
+
+    .answer-option:focus-visible,
+    .dialog-close:focus-visible {
+      outline: 4px solid rgba(69, 182, 217, .45);
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .coach-panel { order: -1; }
+      .stepper {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .step-button { flex: 0 0 120px; }
+      .lesson-head { grid-template-columns: 1fr; }
+      .rule-chip { max-width: none; }
+      .answer-grid { grid-template-columns: repeat(3, minmax(86px, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      .topbar { align-items: flex-start; flex-wrap: wrap; }
+      .logo-box { width: 98px; }
+      .logo-box img { width: 84px; }
+      .top-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
+      .guide-button, .presenter-button { width: 100%; white-space: normal; }
+      main { width: min(100% - 28px, 1420px); }
+      .stage-caption { align-items: stretch; flex-direction: column; }
+      .button-group { display: grid; grid-template-columns: 1fr; }
+      .primary-button, .secondary-button { width: 100%; }
+    }
+
+    @media (max-width: 450px) {
+      .answer-grid { grid-template-columns: repeat(2, minmax(86px, 1fr)); }
+      .compare-body { padding: 16px; }
+      .compare-head { padding: 16px; }
+    }
+
+    body.presenter .topbar { min-height: 68px; }
+    body.presenter .title-block p,
+    body.presenter .coach-panel { display: none; }
+    body.presenter .workspace { grid-template-columns: 1fr; }
+    body.presenter main { width: min(1540px, calc(100% - 48px)); }
+    body.presenter th,
+    body.presenter td { padding: 16px; font-size: 1.05rem; }
+    body.presenter .lesson-head h2 { font-size: clamp(2.25rem, 4vw, 3.35rem); }
+    body.presenter .lead { font-size: 1.15rem; }
+    body.presenter .compare-dialog { width: min(1280px, calc(100% - 32px)); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo-box"><img src="assets/newton-logo.png" alt="Newton School of Technology"></div>
+        <div class="title-block">
+          <h1>Normalisation Lab</h1>
+          <p>Watch one database evolve, one rule at a time.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="guide-button" id="guideButton" type="button">Play: Which normal form?</button>
+        <button class="presenter-button" id="presenterButton" type="button" aria-pressed="false">Presenter view</button>
+      </div>
+    </header>
+
+    <nav class="stepper-wrap" aria-label="Normalisation stages">
+      <div class="stepper" id="stepper">
+        <button class="step-button" type="button" data-step="raw" aria-selected="true">Start<small>Messy data</small></button>
+        <button class="step-button" type="button" data-step="1nf" aria-selected="false">1NF<small>Inside a cell</small></button>
+        <button class="step-button" type="button" data-step="2nf" aria-selected="false">2NF<small>Part of the key</small></button>
+        <button class="step-button" type="button" data-step="3nf" aria-selected="false">3NF<small>Non-key chain</small></button>
+        <button class="step-button" type="button" data-step="bcnf" aria-selected="false">BCNF<small>Determinant test</small></button>
+        <button class="step-button" type="button" data-step="4nf" aria-selected="false">4NF<small>Two lists</small></button>
+        <button class="step-button" type="button" data-step="5nf" aria-selected="false">5NF<small>Three-way join</small></button>
+      </div>
+    </nav>
+
+    <main>
+      <section class="lesson-head" aria-live="polite">
+        <div>
+          <p class="eyebrow" id="eyebrow">Before normalisation</p>
+          <h2 id="lessonTitle">The entire table: spot the first problem</h2>
+          <p class="lead" id="lessonLead">This is the full starting relation. Do not split anything yet—first identify exactly which rule it breaks.</p>
+        </div>
+        <div class="rule-chip" id="ruleChip">
+          <span class="clue-label">Look for</span>
+          <span class="clue-copy" id="clueCopy">A repeating group inside one cell.</span>
+          <span class="clue-notation" id="clueNotation">courses = C101, C205</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="stage">
+          <div class="stage-toolbar">
+            <h3 id="relationName">LearningRecord - unnormalised</h3>
+            <span class="status-badge" id="statusBadge">Fails 1NF</span>
+          </div>
+          <div id="tableArea"></div>
+          <div class="stage-caption">
+            <p id="stageCaption"><strong>Problem:</strong> one Courses cell stores several values.</p>
+            <div class="button-group">
+              <button class="secondary-button" id="backButton" type="button" hidden>Back</button>
+              <button class="primary-button" id="nextButton" type="button">Make it 1NF</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="coach-panel">
+          <h3>Ask the room</h3>
+          <div class="coach-content">
+            <p class="question" id="coachQuestion">Can one cell contain a list or repeating group?</p>
+            <ul class="check-list" id="checkList">
+              <li>Every row must be uniquely identifiable.</li>
+              <li>Every column must hold one kind of fact.</li>
+              <li>Every cell must contain one atomic value.</li>
+            </ul>
+            <div class="coach-actions">
+              <button class="reveal-button" id="revealButton" type="button" aria-expanded="false">Reveal the dependency</button>
+              <div class="teaching-note" id="teachingNote" hidden><strong>Reveal:</strong> Ask students to point to the exact cell that breaks the rule before clicking the button.</div>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="compare-dialog" id="compareDialog" aria-labelledby="compareTitle">
+    <header class="compare-head">
+      <div>
+        <h2 id="compareTitle">Which normal form would you use?</h2>
+        <p>Let the class vote. Then reveal the reason.</p>
+      </div>
+      <button class="dialog-close" id="closeCompare" type="button" aria-label="Close comparison">x</button>
+    </header>
+    <div class="compare-body">
+      <div class="challenge-meta">
+        <span id="caseCounter">Case 1 of 6</span>
+        <span>Use the earliest normal form that fixes the problem</span>
+      </div>
+      <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+      <section class="challenge-card" aria-live="polite">
+        <span class="challenge-tag" id="challengeTag">Spot the problem</span>
+        <h3 id="challengeTitle">A club stores all of a member's skills in one cell.</h3>
+        <div class="challenge-sample" id="challengeSample">Member(member_id, name, skills)<br>M01 | Aanya | Python, Java, SQL</div>
+        <p class="challenge-question">Which normal form directly fixes this problem?</p>
+        <div class="answer-grid" id="answerGrid" role="group" aria-label="Choose a normal form">
+          <button class="answer-option" type="button" data-answer="1nf">1NF</button>
+          <button class="answer-option" type="button" data-answer="2nf">2NF</button>
+          <button class="answer-option" type="button" data-answer="3nf">3NF</button>
+          <button class="answer-option" type="button" data-answer="bcnf">BCNF</button>
+          <button class="answer-option" type="button" data-answer="4nf">4NF</button>
+          <button class="answer-option" type="button" data-answer="5nf">5NF</button>
+        </div>
+        <div class="hint-box" id="hintBox" hidden></div>
+        <div class="quiz-feedback" id="quizFeedback" hidden></div>
+        <div class="quiz-actions">
+          <div class="quiz-actions-left">
+            <button class="secondary-button" id="hintButton" type="button">Show a clue</button>
+          </div>
+          <div class="quiz-actions-right">
+            <button class="secondary-button" id="openExampleButton" type="button" hidden>Open worked example</button>
+            <button class="primary-button" id="nextCaseButton" type="button">Next case</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <script>
+    const steps = {
+      raw: {
+        eyebrow: "Before normalisation",
+        title: "The entire table: spot the first problem",
+        lead: "This is the full starting relation. Do not split anything yet—first identify exactly which rule it breaks.",
+        rule: "Mental model: one fact, one home.",
+        clue: "A list or repeating group inside one cell.",
+        notation: "courses = C101, C205",
+        relation: "LearningRecord - unnormalised",
+        status: "Fails 1NF",
+        statusClass: "fail",
+        caption: "<strong>Problem:</strong> one Courses cell stores several values.",
+        button: "Make it 1NF",
+        question: "Can one cell contain a list or repeating group?",
+        checks: [
+          "Every row must be uniquely identifiable.",
+          "Every column must hold one kind of fact.",
+          "Every cell must contain one atomic value."
+        ],
+        note: "<strong>Dependency found:</strong> Courses is a repeating group inside one cell. A database cannot reliably sort, join or constrain the individual course facts.",
+        table: {
+          headers: ["student_id", "student_name", "courses"],
+          rows: [
+            ["S01", "Aarav", "C101: DBMS: A, C205: Networks: B"],
+            ["S02", "Meera", "C101: DBMS: B+"]
+          ],
+          bad: [[0, 2]]
+        }
+      },
+      "1nf": {
+        eyebrow: "First Normal Form",
+        title: "1NF: now every value is atomic",
+        lead: "The list has become separate rows. The complete 1NF relation is visible below, including its composite key.",
+        rule: "1NF = unique rows + atomic cells + no repeating groups.",
+        clue: "The problem lives inside a cell or repeating columns.",
+        notation: "one cell -> one value",
+        relation: "Enrollment - in 1NF",
+        status: "Passes 1NF - inspect 2NF",
+        statusClass: "warn",
+        caption: "<strong>What changed:</strong> one course enrollment now occupies one row; (student_id, course_id) identifies it.",
+        button: "Normalise to 2NF",
+        question: "Why is this 1NF even though student_name and course_name repeat?",
+        checks: [
+          "Each cell contains exactly one value.",
+          "There are no course1, course2 or repeating columns.",
+          "The composite key identifies each enrollment row."
+        ],
+        note: "<strong>Dependencies revealed:</strong> student_id -> student_name; course_id -> course_name, instructor_id and instructor_name. Those facts need only part of the composite key, so 2NF is next.",
+        table: {
+          headers: ["student_id (PK)", "course_id (PK)", "student_name", "course_name", "instructor_id", "instructor_name", "grade"],
+          rows: [
+            ["S01", "C101", "Aarav", "DBMS", "I04", "Prof Rao", "A"],
+            ["S01", "C205", "Aarav", "Networks", "I09", "Prof Sen", "B"],
+            ["S02", "C101", "Meera", "DBMS", "I04", "Prof Rao", "B+"]
+          ],
+          bad: [],
+          watch: [[0, 2], [0, 3], [0, 4], [0, 5], [1, 2], [1, 3], [1, 4], [1, 5], [2, 2], [2, 3], [2, 4], [2, 5]]
+        }
+      },
+      "2nf": {
+        eyebrow: "Second Normal Form",
+        title: "2NF: every non-key fact needs the whole key",
+        lead: "The composite enrollment key is (student_id, course_id). Facts that need only student_id or only course_id move to their own tables.",
+        rule: "2NF = 1NF + no partial dependency on a composite key.",
+        clue: "Part of a composite key determines a non-key fact.",
+        notation: "key = (A, B), but A -> X",
+        relation: "Enrollment decomposed into Student, Course and Enrollment",
+        status: "Passes 2NF - inspect 3NF",
+        statusClass: "warn",
+        caption: "<strong>What changed:</strong> student facts and course facts are stored once; grade still depends on the whole enrollment key.",
+        button: "Normalise to 3NF",
+        question: "Which fact still describes another non-key field?",
+        checks: [
+          "Student name depends on student_id.",
+          "Course details depend on course_id.",
+          "Grade depends on the full (student_id, course_id) key."
+        ],
+        note: "<strong>Dependency found:</strong> inside Course, instructor_id -> instructor_name. course_id determines instructor_id, which then determines instructor_name. That is transitive.",
+        tables: [
+          {
+            label: "Student", kind: "NEW HOME",
+            headers: ["student_id (PK)", "student_name"],
+            rows: [["S01", "Aarav"], ["S02", "Meera"]], bad: [], watch: []
+          },
+          {
+            label: "Course", kind: "WATCH THIS",
+            headers: ["course_id (PK)", "course_name", "instructor_id", "instructor_name"],
+            rows: [["C101", "DBMS", "I04", "Prof Rao"], ["C205", "Networks", "I09", "Prof Sen"]],
+            bad: [], watch: [[0, 2], [0, 3], [1, 2], [1, 3]]
+          },
+          {
+            label: "Enrollment", kind: "BRIDGE",
+            headers: ["student_id (PK, FK)", "course_id (PK, FK)", "grade"],
+            rows: [["S01", "C101", "A"], ["S01", "C205", "B"], ["S02", "C101", "B+"]], bad: [], watch: []
+          }
+        ]
+      },
+      "3nf": {
+        eyebrow: "Third Normal Form",
+        title: "3NF: non-key facts describe the key - not each other",
+        lead: "Instructor name gets its own home. Course keeps instructor_id as a foreign key, so the fact is stored once and still remains connected.",
+        rule: "3NF = 2NF + no transitive dependency among non-key fields.",
+        clue: "A non-key fact determines another non-key fact.",
+        notation: "K -> A -> B",
+        relation: "The enrollment model after 3NF",
+        status: "Passes 3NF",
+        statusClass: "pass",
+        caption: "<strong>Result:</strong> update Prof Rao once in Instructor; every related course sees the same truth.",
+        button: "Inspect BCNF",
+        question: "What anomaly disappeared when Instructor became its own table?",
+        checks: [
+          "Changing an instructor name requires one update.",
+          "A course references an instructor by key.",
+          "Every non-key field now depends directly on its table's key."
+        ],
+        note: "<strong>Update anomaly removed:</strong> instructor_name no longer repeats in every course or enrollment row. One fact now has one home.",
+        tables: [
+          {
+            label: "Student", kind: "ENTITY",
+            headers: ["student_id (PK)", "student_name"], rows: [["S01", "Aarav"], ["S02", "Meera"]], bad: [], watch: []
+          },
+          {
+            label: "Instructor", kind: "NEW HOME",
+            headers: ["instructor_id (PK)", "instructor_name"], rows: [["I04", "Prof Rao"], ["I09", "Prof Sen"]], bad: [], watch: []
+          },
+          {
+            label: "Course", kind: "ENTITY",
+            headers: ["course_id (PK)", "course_name", "instructor_id (FK)"], rows: [["C101", "DBMS", "I04"], ["C205", "Networks", "I09"]], bad: [], watch: []
+          },
+          {
+            label: "Enrollment", kind: "BRIDGE",
+            headers: ["student_id (PK, FK)", "course_id (PK, FK)", "grade"], rows: [["S01", "C101", "A"], ["S01", "C205", "B"], ["S02", "C101", "B+"]], bad: [], watch: []
+          }
+        ]
+      },
+      "bcnf": {
+        eyebrow: "Boyce-Codd Normal Form",
+        title: "BCNF: every determinant must identify a whole row",
+        lead: "BCNF is the stricter bridge after 3NF. It removes the rare case where a determinant is not a candidate key, even when 3NF still allows it.",
+        rule: "BCNF = for every X -> Y, X must be a superkey.",
+        clue: "A determinant exists that is not a candidate key.",
+        notation: "X -> Y, but X is not a superkey",
+        relation: "Teaching before and after BCNF",
+        status: "Passes BCNF after split",
+        statusClass: "pass",
+        caption: "<strong>Difference from 3NF:</strong> 3NF has a prime-attribute exception; BCNF has no exception for a non-key determinant.",
+        button: "Inspect 4NF",
+        question: "How can a relation pass 3NF but still fail BCNF?",
+        checks: [
+          "(student, subject) determines professor.",
+          "professor determines subject.",
+          "Professor is a determinant but not a superkey."
+        ],
+        note: "<strong>Answer:</strong> subject is a prime attribute, so 3NF can allow professor -> subject. BCNF rejects it because professor does not identify the whole Teaching row.",
+        tables: [
+          {
+            label: "Teaching", kind: "BEFORE: PASSES 3NF",
+            headers: ["student", "subject", "professor"],
+            rows: [["Aarav", "DBMS", "Prof Rao"], ["Meera", "DBMS", "Prof Rao"], ["Aarav", "Networks", "Prof Sen"]],
+            bad: [], watch: [[0, 1], [0, 2], [1, 1], [1, 2], [2, 1], [2, 2]]
+          },
+          {
+            label: "ProfessorSubject", kind: "AFTER",
+            headers: ["professor (PK)", "subject"], rows: [["Prof Rao", "DBMS"], ["Prof Sen", "Networks"]], bad: [], watch: []
+          },
+          {
+            label: "StudentProfessor", kind: "AFTER",
+            headers: ["student (PK)", "professor (PK)"], rows: [["Aarav", "Prof Rao"], ["Meera", "Prof Rao"], ["Aarav", "Prof Sen"]], bad: [], watch: []
+          }
+        ]
+      },
+      "4nf": {
+        eyebrow: "Fourth Normal Form",
+        title: "4NF: independent lists need independent tables",
+        lead: "This is a focused advanced case. A student's hobbies and languages are both multi-valued, but neither determines the other.",
+        rule: "4NF = BCNF + no independent non-trivial multivalued dependencies.",
+        clue: "Two independent many-valued facts share one key.",
+        notation: "K ->> A and K ->> B",
+        relation: "StudentProfile before and after 4NF",
+        status: "Passes 4NF after split",
+        statusClass: "pass",
+        caption: "<strong>Result:</strong> two hobbies plus two languages need four stored facts - not four cross-product rows.",
+        button: "Inspect 5NF",
+        question: "If Aarav learns one new language, how many rows would the old table need?",
+        checks: [
+          "student_id ->> hobby.",
+          "student_id ->> language.",
+          "Hobby and language are independent facts."
+        ],
+        note: "<strong>Answer:</strong> the old table needs one new row for every hobby-language combination. The 4NF design adds the language only once.",
+        tables: [
+          {
+            label: "StudentProfile", kind: "BEFORE: CROSS PRODUCT",
+            headers: ["student_id", "hobby", "language"],
+            rows: [["S01", "Chess", "English"], ["S01", "Chess", "Hindi"], ["S01", "Music", "English"], ["S01", "Music", "Hindi"]],
+            bad: [[0, 1], [0, 2], [1, 1], [1, 2], [2, 1], [2, 2], [3, 1], [3, 2]], watch: []
+          },
+          {
+            label: "StudentHobby", kind: "AFTER",
+            headers: ["student_id (PK)", "hobby (PK)"], rows: [["S01", "Chess"], ["S01", "Music"]], bad: [], watch: []
+          },
+          {
+            label: "StudentLanguage", kind: "AFTER",
+            headers: ["student_id (PK)", "language (PK)"], rows: [["S01", "English"], ["S01", "Hindi"]], bad: [], watch: []
+          }
+        ]
+      },
+      "5nf": {
+        eyebrow: "Fifth Normal Form",
+        title: "5NF: decompose only when the smaller joins are exact",
+        lead: "A three-way supplier-part-project fact may be reducible to pairwise permissions - but only if joining them creates no false triples.",
+        rule: "5NF = 4NF + every non-trivial join dependency follows from candidate keys.",
+        clue: "A redundancy appears only across a three-way lossless join.",
+        notation: "R = R1 JOIN R2 JOIN R3",
+        relation: "Supply relation and its lossless pairwise decomposition",
+        status: "Passes 5NF if the rule is proven",
+        statusClass: "pass",
+        caption: "<strong>Safety rule:</strong> project, join and compare. If the join invents even one row, keep the original three-way relation.",
+        button: "Restart lesson",
+        question: "Why is 5NF decomposition conditional rather than automatic?",
+        checks: [
+          "All valid triples must be implied by the pairwise facts.",
+          "The natural join must recreate every original row.",
+          "The natural join must create zero false rows."
+        ],
+        note: "<strong>Answer:</strong> pairwise permissions can imply combinations that were never valid. 5NF is safe only when the join dependency is a real business rule.",
+        tables: [
+          {
+            label: "Supply", kind: "BEFORE: THREE-WAY FACT",
+            headers: ["supplier", "part", "project"], rows: [["S1", "P1", "J1"], ["S1", "P1", "J2"], ["S1", "P2", "J1"], ["S2", "P1", "J1"]], bad: [], watch: []
+          },
+          {
+            label: "SupplierPart", kind: "AFTER",
+            headers: ["supplier", "part"], rows: [["S1", "P1"], ["S1", "P2"], ["S2", "P1"]], bad: [], watch: []
+          },
+          {
+            label: "SupplierProject", kind: "AFTER",
+            headers: ["supplier", "project"], rows: [["S1", "J1"], ["S1", "J2"], ["S2", "J1"]], bad: [], watch: []
+          },
+          {
+            label: "PartProject", kind: "AFTER",
+            headers: ["part", "project"], rows: [["P1", "J1"], ["P1", "J2"], ["P2", "J1"]], bad: [], watch: []
+          }
+        ]
+      }
+    };
+
+    const stepOrder = ["raw", "1nf", "2nf", "3nf", "bcnf", "4nf", "5nf"];
+    let activeStep = "raw";
+
+    const quizCases = [
+      {
+        step: "1nf",
+        tag: "Case 1: look inside a cell",
+        title: "A club stores all of a member's skills in one cell.",
+        sample: "Member(member_id, name, skills)<br><strong>M01 | Aanya | Python, Java, SQL</strong>",
+        hint: "Ask: does every cell contain exactly one value?",
+        feedback: "<strong>Use 1NF.</strong> The comma-separated list is a repeating group. Make one skill value per row (or move skills to MemberSkill)."
+      },
+      {
+        step: "2nf",
+        tag: "Case 2: inspect a composite key",
+        title: "An enrollment row is identified by two columns, but the student's name needs only one of them.",
+        sample: "Enrollment(<u>student_id, course_id</u>, student_name, grade)<br><strong>(student_id, course_id) is the key; student_id -&gt; student_name</strong>",
+        hint: "Ask: does a non-key fact depend on only part of a composite key?",
+        feedback: "<strong>Use 2NF.</strong> student_name partially depends on the key. Move it to Student; keep grade in Enrollment because it needs the whole key."
+      },
+      {
+        step: "3nf",
+        tag: "Case 3: follow the dependency chain",
+        title: "A student row stores a department name, but the department ID determines that name.",
+        sample: "Student(<u>student_id</u>, dept_id, dept_name)<br><strong>student_id -&gt; dept_id -&gt; dept_name</strong>",
+        hint: "Ask: does one non-key field determine another non-key field?",
+        feedback: "<strong>Use 3NF.</strong> dept_name is transitively dependent on student_id. Create Department(dept_id, dept_name)."
+      },
+      {
+        step: "bcnf",
+        tag: "Case 4: test every determinant",
+        title: "Each professor teaches one subject, but a professor does not identify a complete teaching row.",
+        sample: "Teaching(student, subject, professor)<br><strong>professor -&gt; subject; professor is not a superkey</strong>",
+        hint: "Ask: for every X -&gt; Y, is X a candidate key or superkey?",
+        feedback: "<strong>Use BCNF.</strong> This can pass 3NF through its prime-attribute exception, but BCNF rejects any determinant that is not a superkey."
+      },
+      {
+        step: "4nf",
+        tag: "Case 5: find independent lists",
+        title: "A student's hobbies and languages vary independently, producing every possible combination.",
+        sample: "StudentProfile(student_id, hobby, language)<br><strong>student_id -&gt;&gt; hobby &nbsp; and &nbsp; student_id -&gt;&gt; language</strong>",
+        hint: "Ask: are there two unrelated many-valued facts about the same key?",
+        feedback: "<strong>Use 4NF.</strong> Split the two independent lists into StudentHobby and StudentLanguage to remove the cross-product rows."
+      },
+      {
+        step: "5nf",
+        tag: "Case 6: prove the three-way join",
+        title: "Supplier-part-project facts can be rebuilt exactly from three pairwise permission tables.",
+        sample: "Supply(supplier, part, project)<br><strong>Supply = SupplierPart JOIN SupplierProject JOIN PartProject</strong>",
+        hint: "Ask: does decomposition need three or more tables, and does the join recreate exactly the valid rows?",
+        feedback: "<strong>Use 5NF only after proving the join rule.</strong> Decompose only when the natural join recreates every valid triple and invents no false one."
+      }
+    ];
+    let quizIndex = 0;
+    let quizLocked = false;
+
+    function renderTable(table) {
+      const head = table.headers.map(header => `<th scope="col">${header}</th>`).join("");
+      const body = table.rows.map((row, rowIndex) => {
+        const cells = row.map((cell, cellIndex) => {
+          const isBad = (table.bad || []).some(([badRow, badCell]) => badRow === rowIndex && badCell === cellIndex);
+          const isWatch = (table.watch || []).some(([watchRow, watchCell]) => watchRow === rowIndex && watchCell === cellIndex);
+          const cellClass = isBad ? "bad-cell" : (isWatch ? "watch-cell" : "");
+          return `<td class="${cellClass}">${cell}</td>`;
+        }).join("");
+        return `<tr>${cells}</tr>`;
+      }).join("");
+      return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+    }
+
+    function renderTables(step) {
+      const tables = step.tables || [{ label: "", kind: "", ...step.table }];
+      const cards = tables.map(table => {
+        const label = table.label
+          ? `<div class="relation-label"><span>${table.label}</span><span class="relation-kind">${table.kind || ""}</span></div>`
+          : "";
+        return `<section class="mini-relation">${label}${renderTable(table)}</section>`;
+      }).join("");
+      return `<div class="table-grid ${tables.length === 1 ? "single" : ""}">${cards}</div>`;
+    }
+
+    function render(stepName) {
+      activeStep = stepName;
+      const step = steps[stepName];
+      document.getElementById("eyebrow").textContent = step.eyebrow;
+      document.getElementById("lessonTitle").textContent = step.title;
+      document.getElementById("lessonLead").textContent = step.lead;
+      document.getElementById("clueCopy").textContent = step.clue;
+      document.getElementById("clueNotation").textContent = step.notation;
+      document.getElementById("relationName").textContent = step.relation;
+      const badge = document.getElementById("statusBadge");
+      badge.textContent = step.status;
+      const badgeStyles = {
+        pass: ["var(--green-soft)", "var(--green)"],
+        warn: ["#fff4d6", "#6e4a00"],
+        fail: ["var(--red-soft)", "var(--red)"]
+      };
+      const [badgeBackground, badgeColor] = badgeStyles[step.statusClass];
+      badge.style.background = badgeBackground;
+      badge.style.color = badgeColor;
+      document.getElementById("tableArea").innerHTML = renderTables(step);
+      document.getElementById("stageCaption").innerHTML = step.caption;
+      document.getElementById("nextButton").textContent = step.button;
+      const currentIndex = stepOrder.indexOf(stepName);
+      const backButton = document.getElementById("backButton");
+      backButton.hidden = currentIndex === 0;
+      backButton.textContent = currentIndex > 0 ? `Back to ${currentIndex === 1 ? "start" : stepOrder[currentIndex - 1].toUpperCase()}` : "Back";
+      document.getElementById("coachQuestion").textContent = step.question;
+      document.getElementById("checkList").innerHTML = step.checks.map(item => `<li>${item}</li>`).join("");
+      const teachingNote = document.getElementById("teachingNote");
+      teachingNote.innerHTML = step.note;
+      teachingNote.hidden = true;
+      const revealButton = document.getElementById("revealButton");
+      revealButton.setAttribute("aria-expanded", "false");
+      revealButton.textContent = "Reveal the dependency";
+      document.querySelectorAll("[data-step]").forEach(button => {
+        button.setAttribute("aria-selected", String(button.dataset.step === stepName));
+      });
+    }
+
+    function renderQuizCase(index) {
+      quizIndex = index;
+      quizLocked = false;
+      const quizCase = quizCases[index];
+      document.getElementById("caseCounter").textContent = `Case ${index + 1} of ${quizCases.length}`;
+      document.getElementById("progressFill").style.width = `${((index + 1) / quizCases.length) * 100}%`;
+      document.getElementById("challengeTag").textContent = quizCase.tag;
+      document.getElementById("challengeTitle").textContent = quizCase.title;
+      document.getElementById("challengeSample").innerHTML = quizCase.sample;
+      const hintBox = document.getElementById("hintBox");
+      hintBox.textContent = quizCase.hint;
+      hintBox.hidden = true;
+      const hintButton = document.getElementById("hintButton");
+      hintButton.textContent = "Show a clue";
+      const feedback = document.getElementById("quizFeedback");
+      feedback.hidden = true;
+      feedback.classList.remove("wrong-feedback");
+      document.getElementById("openExampleButton").hidden = true;
+      document.getElementById("nextCaseButton").textContent = index === quizCases.length - 1 ? "Restart cases" : "Next case";
+      document.querySelectorAll("[data-answer]").forEach(button => {
+        button.disabled = false;
+        button.classList.remove("correct", "wrong");
+      });
+    }
+
+    document.getElementById("stepper").addEventListener("click", event => {
+      const button = event.target.closest("[data-step]");
+      if (button) render(button.dataset.step);
+    });
+
+    document.getElementById("nextButton").addEventListener("click", () => {
+      const currentIndex = stepOrder.indexOf(activeStep);
+      render(currentIndex === stepOrder.length - 1 ? "raw" : stepOrder[currentIndex + 1]);
+    });
+
+    document.getElementById("backButton").addEventListener("click", () => {
+      const currentIndex = stepOrder.indexOf(activeStep);
+      if (currentIndex > 0) render(stepOrder[currentIndex - 1]);
+    });
+
+    document.getElementById("revealButton").addEventListener("click", event => {
+      const teachingNote = document.getElementById("teachingNote");
+      const willExpand = teachingNote.hidden;
+      teachingNote.hidden = !willExpand;
+      event.currentTarget.setAttribute("aria-expanded", String(willExpand));
+      event.currentTarget.textContent = willExpand ? "Hide the dependency" : "Reveal the dependency";
+    });
+
+    document.getElementById("presenterButton").addEventListener("click", event => {
+      const pressed = event.currentTarget.getAttribute("aria-pressed") === "true";
+      document.body.classList.toggle("presenter", !pressed);
+      event.currentTarget.setAttribute("aria-pressed", String(!pressed));
+      event.currentTarget.textContent = pressed ? "Presenter view" : "Exit presenter view";
+    });
+
+    const compareDialog = document.getElementById("compareDialog");
+
+    document.getElementById("guideButton").addEventListener("click", () => {
+      renderQuizCase(0);
+      compareDialog.showModal();
+    });
+
+    document.getElementById("closeCompare").addEventListener("click", () => {
+      compareDialog.close();
+    });
+
+    document.getElementById("hintButton").addEventListener("click", event => {
+      const hintBox = document.getElementById("hintBox");
+      hintBox.hidden = !hintBox.hidden;
+      event.currentTarget.textContent = hintBox.hidden ? "Show a clue" : "Hide clue";
+    });
+
+    document.getElementById("answerGrid").addEventListener("click", event => {
+      const answerButton = event.target.closest("[data-answer]");
+      if (!answerButton || quizLocked) return;
+      quizLocked = true;
+      const quizCase = quizCases[quizIndex];
+      const isCorrect = answerButton.dataset.answer === quizCase.step;
+      const correctButton = document.querySelector(`[data-answer="${quizCase.step}"]`);
+      correctButton.classList.add("correct");
+      if (!isCorrect) answerButton.classList.add("wrong");
+      document.querySelectorAll("[data-answer]").forEach(button => { button.disabled = true; });
+      const feedback = document.getElementById("quizFeedback");
+      feedback.innerHTML = `${isCorrect ? "Correct. " : `Not ${answerButton.textContent}. `}${quizCase.feedback}`;
+      feedback.classList.toggle("wrong-feedback", !isCorrect);
+      feedback.hidden = false;
+      document.getElementById("openExampleButton").hidden = false;
+    });
+
+    document.getElementById("nextCaseButton").addEventListener("click", () => {
+      renderQuizCase((quizIndex + 1) % quizCases.length);
+    });
+
+    document.getElementById("openExampleButton").addEventListener("click", () => {
+      render(quizCases[quizIndex].step);
+      compareDialog.close();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (compareDialog.open) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const currentIndex = stepOrder.indexOf(activeStep);
+      const nextIndex = event.key === "ArrowRight"
+        ? Math.min(stepOrder.length - 1, currentIndex + 1)
+        : Math.max(0, currentIndex - 1);
+      if (nextIndex !== currentIndex) render(stepOrder[nextIndex]);
+    });
+
+    render("raw");
+  </script>
+</body>
+</html>

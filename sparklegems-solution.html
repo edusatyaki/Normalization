@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Worked solution: normalising the SparkleGems jewellery sales table from UNF to BCNF.">
+  <title>SparkleGems Normalisation Solution</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23073B66'/%3E%3Cpath d='M18 17h28v8H26v7h17v8H26v7h20' fill='none' stroke='%2345B6D9' stroke-width='6'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --navy: #073b66;
+      --blue: #087cad;
+      --cyan: #45b6d9;
+      --ink: #17324a;
+      --muted: #5c7080;
+      --paper: #f4f8fb;
+      --white: #ffffff;
+      --line: #c9d9e4;
+      --red: #b9364b;
+      --red-soft: #fff0f2;
+      --green: #147a58;
+      --green-soft: #e9f8f1;
+      --gold: #f4c542;
+      --gold-soft: #fff4d6;
+      --gold-ink: #6e4a00;
+      --shadow: 0 18px 44px rgba(7, 59, 102, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+    }
+
+    button { font: inherit; }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 78px;
+      padding: 14px clamp(20px, 4vw, 54px);
+      background: var(--navy);
+      color: var(--white);
+    }
+
+    .brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
+
+    .logo-box {
+      width: 116px;
+      height: 48px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--white);
+    }
+
+    .logo-box img { width: 100px; height: auto; display: block; }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: clamp(1.3rem, 2.2vw, 2.05rem);
+      line-height: 1.05;
+      letter-spacing: -.02em;
+      overflow-wrap: anywhere;
+    }
+
+    .title-block p { margin: 6px 0 0; color: #cfeaf6; font-size: clamp(.88rem, 1.2vw, 1rem); }
+
+    .top-actions { display: flex; gap: 10px; flex: 0 0 auto; }
+
+    .ghost-button, .gold-button {
+      min-height: 44px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 999px;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .ghost-button { border: 1px solid rgba(255,255,255,.45); background: transparent; color: var(--white); }
+    .gold-button { background: var(--gold); color: var(--navy); }
+
+    /* ---------- stepper ---------- */
+    .stepper-wrap {
+      padding: 14px clamp(20px, 4vw, 54px) 0;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .stepper {
+      max-width: 1420px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+      gap: 8px;
+    }
+
+    .step-button {
+      position: relative;
+      padding: 10px 12px 13px;
+      border: 0;
+      border-radius: 10px 10px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .step-button small { display: block; margin-top: 2px; font-size: .74rem; font-weight: 600; }
+    .step-button[aria-selected="true"] { background: #e9f5fb; color: var(--navy); }
+    .step-button[aria-selected="true"]::after {
+      content: "";
+      position: absolute;
+      left: 14px; right: 14px; bottom: 0;
+      height: 4px;
+      border-radius: 4px 4px 0 0;
+      background: var(--blue);
+    }
+
+    .step-button:focus-visible, .ghost-button:focus-visible, .gold-button:focus-visible,
+    .nav-button:focus-visible {
+      outline: 4px solid rgba(69, 182, 217, .45);
+      outline-offset: 2px;
+    }
+
+    /* ---------- layout ---------- */
+    main {
+      width: min(1420px, calc(100% - clamp(28px, 6vw, 92px)));
+      margin: 0 auto;
+      padding: clamp(18px, 3vh, 34px) 0 40px;
+    }
+
+    .panel { display: none; }
+    .panel.is-active { display: block; animation: fade-in .3s ease-out; }
+    body.show-all .panel { display: block; margin-bottom: 42px; }
+
+    @keyframes fade-in { from { opacity: .25; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .panel.is-active { animation: none; } }
+
+    .panel-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--blue);
+      font-size: .8rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: clamp(1.55rem, 3vw, 2.5rem);
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
+
+    .lead { max-width: 860px; margin: 10px 0 0; color: var(--muted); font-size: clamp(1rem, 1.3vw, 1.14rem); line-height: 1.5; }
+
+    .rule-chip { padding: 14px 16px; border-radius: 12px; background: var(--navy); color: var(--white); line-height: 1.4; }
+    .rule-chip .chip-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--gold);
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .rule-chip strong { font-weight: 800; }
+    .rule-chip .chip-note {
+      display: block;
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px solid rgba(255,255,255,.2);
+      color: #cfeaf6;
+      font-size: .85rem;
+    }
+
+    .card {
+      padding: clamp(16px, 2vw, 26px);
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+
+    .card-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-head h3 { margin: 0; font-size: 1.05rem; color: var(--navy); }
+
+    .badge { padding: 7px 11px; border-radius: 999px; font-size: .78rem; font-weight: 800; }
+    .badge.fail { background: var(--red-soft); color: var(--red); }
+    .badge.warn { background: var(--gold-soft); color: var(--gold-ink); }
+    .badge.pass { background: var(--green-soft); color: var(--green); }
+
+    /* ---------- tables ---------- */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+
+    table { width: 100%; min-width: 680px; border-collapse: collapse; }
+
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    th:last-child, td:last-child { border-right: 0; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    th { background: var(--navy); color: var(--white); font-size: .78rem; letter-spacing: .02em; }
+    th .key { display: block; color: var(--gold); font-size: .68rem; font-weight: 800; letter-spacing: .06em; }
+    td { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; }
+
+    .bad-cell { background: var(--red-soft); color: var(--red); font-weight: 800; box-shadow: inset 0 0 0 2px rgba(185,54,75,.25); }
+    .watch-cell { background: var(--gold-soft); color: var(--gold-ink); font-weight: 800; box-shadow: inset 0 0 0 2px rgba(244,197,66,.42); }
+    .good-cell { background: var(--green-soft); color: var(--green); font-weight: 800; }
+
+    .table-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 14px; align-items: start; }
+    .table-grid table { min-width: 0; }
+    .table-grid th, .table-grid td { padding: 9px 11px; font-size: .8rem; }
+
+    .relation-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 7px;
+      color: var(--navy);
+      font-weight: 800;
+    }
+
+    .relation-kind { color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+    .caption { margin: 12px 0 0; color: var(--muted); line-height: 1.5; }
+    .caption strong { color: var(--ink); }
+
+    /* ---------- notes & lists ---------- */
+    .note {
+      padding: 14px 16px;
+      margin: 16px 0 0;
+      border-radius: 10px;
+      line-height: 1.5;
+    }
+    .note.warn { background: var(--gold-soft); color: var(--gold-ink); }
+    .note.good { background: var(--green-soft); color: #125f47; }
+    .note.bad { background: var(--red-soft); color: #8a2436; }
+    .note h4 { margin: 0 0 6px; font-size: .95rem; }
+    .note p { margin: 0; }
+    .note p + p { margin-top: 8px; }
+
+    .fd-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+    .fd-list li {
+      padding: 10px 13px;
+      border-left: 4px solid var(--cyan);
+      border-radius: 8px;
+      background: #eef7fb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .87rem;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .fd-list li.partial { border-left-color: var(--red); background: var(--red-soft); }
+    .fd-list li.transitive { border-left-color: var(--gold); background: var(--gold-soft); }
+    .fd-list li.full { border-left-color: var(--green); background: var(--green-soft); }
+    .fd-list li em { display: block; margin-top: 4px; color: var(--muted); font-family: inherit; font-style: normal; font-size: .8rem; }
+    .fd-list li.partial em { color: #8a2436; }
+    .fd-list li.transitive em { color: var(--gold-ink); }
+    .fd-list li.full em { color: #125f47; }
+
+    .why-list { margin: 0; padding-left: 22px; line-height: 1.6; }
+    .why-list li { margin-bottom: 7px; }
+    .why-list code { padding: 1px 5px; border-radius: 5px; background: #eef7fb; font-size: .86em; }
+
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+
+    pre {
+      margin: 0;
+      padding: 16px 18px;
+      overflow-x: auto;
+      border-radius: 12px;
+      background: #062c4a;
+      color: #dff1fa;
+      font-size: .84rem;
+      line-height: 1.6;
+    }
+    pre .kw { color: #7fd6f5; font-weight: 700; }
+    pre .cm { color: #8fb3c9; font-style: italic; }
+    pre .st { color: #f7d78a; }
+
+    .diagram { width: 100%; height: auto; }
+
+    /* ---------- footer nav ---------- */
+    .panel-nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .nav-button {
+      min-height: 44px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .nav-button.prev { background: #e9f5fb; color: var(--navy); }
+    .nav-button.next { background: var(--blue); color: var(--white); }
+    .nav-button[hidden] { display: none; }
+    body.show-all .panel-nav { display: none; }
+
+    footer.page-foot {
+      padding: 22px clamp(20px, 4vw, 54px) 30px;
+      color: var(--muted);
+      text-align: center;
+      font-size: .88rem;
+      line-height: 1.6;
+    }
+
+    /* ---------- responsive ---------- */
+    @media (max-width: 900px) {
+      .panel-head { grid-template-columns: 1fr; }
+      .stepper { display: flex; overflow-x: auto; }
+      .step-button { flex: 0 0 132px; }
+    }
+
+    @media (max-width: 620px) {
+      .topbar { flex-wrap: wrap; }
+      .top-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
+      .ghost-button, .gold-button { width: 100%; }
+      main { width: min(100% - 28px, 1420px); }
+    }
+
+    @media print {
+      body { background: var(--white); }
+      .topbar, .stepper-wrap, .panel-nav, .top-actions { display: none !important; }
+      .panel { display: block !important; page-break-after: always; }
+      .card { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo-box"><img src="assets/newton-logo.png" alt="Newton School of Technology"></div>
+      <div class="title-block">
+        <h1>SparkleGems &mdash; Normalisation Solution</h1>
+        <p>Question Lab 2 worked end to end: UNF &rarr; 1NF &rarr; 2NF &rarr; 3NF &rarr; BCNF.</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="ghost-button" id="showAllButton" type="button" aria-pressed="false">Show all steps</button>
+      <button class="gold-button" id="printButton" type="button">Print / PDF</button>
+    </div>
+  </header>
+
+  <nav class="stepper-wrap" aria-label="Normalisation stages">
+    <div class="stepper" id="stepper">
+      <button class="step-button" type="button" data-step="brief" aria-selected="true">Brief<small>The messy table</small></button>
+      <button class="step-button" type="button" data-step="1nf" aria-selected="false">1NF<small>Atomic values</small></button>
+      <button class="step-button" type="button" data-step="2nf" aria-selected="false">2NF<small>Partial deps</small></button>
+      <button class="step-button" type="button" data-step="3nf" aria-selected="false">3NF<small>Transitive deps</small></button>
+      <button class="step-button" type="button" data-step="bcnf" aria-selected="false">BCNF<small>Determinant test</small></button>
+      <button class="step-button" type="button" data-step="final"aria-selected="false">Schema<small>SQL + proof</small></button>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ============================ BRIEF / UNF ============================ -->
+    <section class="panel is-active" id="panel-brief" data-panel="brief">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Step 0 &middot; Unnormalised form</p>
+          <h2>One table trying to be five things at once</h2>
+          <p class="lead">SparkleGems records every sale in a single sheet that mixes order, customer, product and designer facts. Before splitting anything, name the exact rules it breaks.</p>
+        </div>
+        <div class="rule-chip">
+          <span class="chip-label">Goal</span>
+          <strong>One fact, one place.</strong>
+          <span class="chip-note">Five orders, eight jewellery pieces, four customers, two designers &mdash; all crammed into eleven columns.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>SparkleGemsSales &mdash; source table (as supplied)</h3>
+          <span class="badge fail">Fails 1NF</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">OrderID</th>
+                <th scope="col">OrderDate</th>
+                <th scope="col">CustomerID</th>
+                <th scope="col">CustomerName</th>
+                <th scope="col">CustomerPhone</th>
+                <th scope="col">CustomerAddress</th>
+                <th scope="col">ItemName, Material</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Price</th>
+                <th scope="col">DesignerName</th>
+                <th scope="col">DesignerPhone</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>O1001</td><td>2025-10-25</td><td>C001</td><td>Asha Mehta</td><td>9876543210</td><td>Mumbai</td>
+                <td class="bad-cell">Ring - Diamond, Necklace - Gold</td>
+                <td class="bad-cell">1, 1</td>
+                <td class="bad-cell">55000, 72000</td>
+                <td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td>
+              </tr>
+              <tr>
+                <td>O1002</td><td>2025-10-26</td><td>C002</td><td>Rohan Patel</td><td>9988776655</td><td>Ahmedabad</td>
+                <td class="bad-cell">Bracelet - Silver</td>
+                <td>2</td><td>18000</td>
+                <td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td>
+              </tr>
+              <tr>
+                <td>O1003</td><td>2025-10-27</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td>
+                <td class="bad-cell">Earring - Platinum, Bracelet - Gold</td>
+                <td class="bad-cell">1, 2</td>
+                <td class="bad-cell">90000, 25000</td>
+                <td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td>
+              </tr>
+              <tr>
+                <td>O1004</td><td>2025-10-28</td><td>C003</td><td>Neha Joshi</td><td>9876001234</td><td>Pune</td>
+                <td class="bad-cell">Necklace - Diamond</td>
+                <td>1</td><td>80000</td>
+                <td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td>
+              </tr>
+              <tr>
+                <td>O1005</td><td>2025-10-29</td><td>C004</td><td>Isha Kapoor</td><td>9000001111</td><td>Delhi</td>
+                <td class="bad-cell">Ring - Silver, Ring - Gold</td>
+                <td class="bad-cell">1, 1</td>
+                <td class="bad-cell">20000, 35000</td>
+                <td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption"><strong>Red</strong> = more than one value in a cell. <strong>Amber</strong> = the same fact stored again and again.</p>
+
+        <div class="note warn">
+          <h4>Reading note: the Quantity column in the spreadsheet</h4>
+          <p>Excel silently converted the multi-value quantity cells into dates (serials 45658 and 45689). The cells carry the number format <code>d, m</code>, so 45658 renders as <strong>1, 1</strong> and 45689 as <strong>1, 2</strong>. Those are the quantities used throughout this solution.</p>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>Which rules are broken</h3></div>
+          <ol class="why-list">
+            <li><strong>Non-atomic cells.</strong> <code>Ring - Diamond, Necklace - Gold</code> is a list, and <code>Quantity</code> and <code>Price</code> are parallel lists matched only by position. Nothing stops the lists from falling out of step.</li>
+            <li><strong>Two facts in one column.</strong> <code>ItemName, Material</code> mixes what the piece is with what it is made of.</li>
+            <li><strong>Repeating customer block.</strong> Asha Mehta's name, phone and city are stored once per order, not once per customer.</li>
+            <li><strong>Repeating designer block.</strong> Priya Shah's phone number is copied into three different rows.</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>The anomalies this causes</h3></div>
+          <ol class="why-list">
+            <li><strong>Insert anomaly.</strong> A newly hired designer, or a new piece that has not sold yet, cannot be recorded &mdash; there is no order to hang it on.</li>
+            <li><strong>Update anomaly.</strong> Asha Mehta moves from Mumbai to Nashik: every one of her order rows must change, and any row missed leaves the database contradicting itself.</li>
+            <li><strong>Delete anomaly.</strong> Cancel order O1004 and the only record of <code>Necklace - Diamond</code> and its &#8377;80,000 price disappears with it.</li>
+            <li><strong>No safe key.</strong> <code>OrderID</code> cannot identify a row while one row holds two different jewellery pieces.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="panel-nav">
+        <span></span>
+        <button class="nav-button next" type="button" data-goto="1nf">Normalise to 1NF &rarr;</button>
+      </div>
+    </section>
+
+    <!-- ============================ 1NF ============================ -->
+    <section class="panel" id="panel-1nf" data-panel="1nf">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Step 1 &middot; First Normal Form</p>
+          <h2>1NF: one value per cell, one row per order line</h2>
+          <p class="lead">Split the item list into separate rows, split <code>ItemName, Material</code> into two columns, and pair each quantity and price with its own piece. Nothing is moved to a new table yet.</p>
+        </div>
+        <div class="rule-chip">
+          <span class="chip-label">Rule applied</span>
+          <strong>1NF = atomic cells + no repeating groups + every row uniquely identifiable.</strong>
+          <span class="chip-note">Primary key becomes the composite (OrderID, ItemID).</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>SparkleGemsOrderLine &mdash; in 1NF</h3>
+          <span class="badge warn">Passes 1NF &middot; inspect 2NF</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">OrderID<span class="key">PK</span></th>
+                <th scope="col">ItemID<span class="key">PK</span></th>
+                <th scope="col">OrderDate</th>
+                <th scope="col">CustomerID</th>
+                <th scope="col">CustomerName</th>
+                <th scope="col">CustomerPhone</th>
+                <th scope="col">CustomerAddress</th>
+                <th scope="col">ItemName</th>
+                <th scope="col">Material</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Price</th>
+                <th scope="col">DesignerName</th>
+                <th scope="col">DesignerPhone</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>O1001</td><td>P01</td><td>2025-10-25</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td><td class="good-cell">Ring</td><td class="good-cell">Diamond</td><td class="good-cell">1</td><td class="good-cell">55000</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+              <tr><td>O1001</td><td>P02</td><td>2025-10-25</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td><td class="good-cell">Necklace</td><td class="good-cell">Gold</td><td class="good-cell">1</td><td class="good-cell">72000</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+              <tr><td>O1002</td><td>P03</td><td>2025-10-26</td><td>C002</td><td>Rohan Patel</td><td>9988776655</td><td>Ahmedabad</td><td class="good-cell">Bracelet</td><td class="good-cell">Silver</td><td class="good-cell">2</td><td class="good-cell">18000</td><td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td></tr>
+              <tr><td>O1003</td><td>P04</td><td>2025-10-27</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td><td class="good-cell">Earring</td><td class="good-cell">Platinum</td><td class="good-cell">1</td><td class="good-cell">90000</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+              <tr><td>O1003</td><td>P05</td><td>2025-10-27</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td><td class="good-cell">Bracelet</td><td class="good-cell">Gold</td><td class="good-cell">2</td><td class="good-cell">25000</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+              <tr><td>O1004</td><td>P06</td><td>2025-10-28</td><td>C003</td><td>Neha Joshi</td><td>9876001234</td><td>Pune</td><td class="good-cell">Necklace</td><td class="good-cell">Diamond</td><td class="good-cell">1</td><td class="good-cell">80000</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+              <tr><td>O1005</td><td>P07</td><td>2025-10-29</td><td>C004</td><td>Isha Kapoor</td><td>9000001111</td><td>Delhi</td><td class="good-cell">Ring</td><td class="good-cell">Silver</td><td class="good-cell">1</td><td class="good-cell">20000</td><td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td></tr>
+              <tr><td>O1005</td><td>P08</td><td>2025-10-29</td><td>C004</td><td>Isha Kapoor</td><td>9000001111</td><td>Delhi</td><td class="good-cell">Ring</td><td class="good-cell">Gold</td><td class="good-cell">1</td><td class="good-cell">35000</td><td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption"><strong>Green</strong> = now atomic. <strong>Amber</strong> = still redundant, which is exactly what 2NF and 3NF will remove. Five rows became eight order lines.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>What changed and why</h3></div>
+          <ol class="why-list">
+            <li><code>ItemName, Material</code> became two columns &mdash; one column, one kind of fact.</li>
+            <li>Each item in a list got its own row, and the positional <code>Quantity</code> / <code>Price</code> lists were unpacked alongside it.</li>
+            <li><code>ItemID</code> (P01&ndash;P08) was introduced so a piece can be referenced by key instead of by a text description.</li>
+            <li>The key is now the composite <code>(OrderID, ItemID)</code>: an order can hold many pieces, and a piece can appear in many orders.</li>
+          </ol>
+          <div class="note warn">
+            <h4>Stated assumption</h4>
+            <p><code>Price</code> is read as the <strong>unit price of the piece</strong>, not the line total. Every (ItemName, Material) pair in the data carries exactly one price, which supports this reading. <code>LineTotal = Quantity &times; Price</code> is derived and is never stored.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Functional dependencies now visible</h3></div>
+          <ul class="fd-list">
+            <li>OrderID &rarr; OrderDate, CustomerID, DesignerName, DesignerPhone
+              <em>Only half the key is needed &mdash; a partial dependency.</em></li>
+            <li>CustomerID &rarr; CustomerName, CustomerPhone, CustomerAddress
+              <em>Reached through OrderID, so also transitive.</em></li>
+            <li>ItemID &rarr; ItemName, Material, Price
+              <em>The other half of the key &mdash; also partial.</em></li>
+            <li>DesignerName &rarr; DesignerPhone
+              <em>A non-key field determining another non-key field.</em></li>
+            <li class="full">(OrderID, ItemID) &rarr; Quantity
+              <em>The only fact that genuinely needs the whole key.</em></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel-nav">
+        <button class="nav-button prev" type="button" data-goto="brief">&larr; Back to the brief</button>
+        <button class="nav-button next" type="button" data-goto="2nf">Normalise to 2NF &rarr;</button>
+      </div>
+    </section>
+
+    <!-- ============================ 2NF ============================ -->
+    <section class="panel" id="panel-2nf" data-panel="2nf">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Step 2 &middot; Second Normal Form</p>
+          <h2>2NF: every non-key fact must need the whole key</h2>
+          <p class="lead">The key is <code>(OrderID, ItemID)</code>. Anything determined by <code>OrderID</code> alone, or by <code>ItemID</code> alone, is a partial dependency and moves to its own relation.</p>
+        </div>
+        <div class="rule-chip">
+          <span class="chip-label">Rule applied</span>
+          <strong>2NF = 1NF + no partial dependency on part of a composite key.</strong>
+          <span class="chip-note">Only Quantity survives in the bridge table.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>The partial dependencies being removed</h3></div>
+        <ul class="fd-list">
+          <li class="partial">OrderID &rarr; OrderDate, CustomerID, CustomerName, CustomerPhone, CustomerAddress, DesignerName, DesignerPhone
+            <em>Half of the key determines all of this &rarr; move to <strong>Order_Header</strong>.</em></li>
+          <li class="partial">ItemID &rarr; ItemName, Material, Price
+            <em>The other half of the key determines this &rarr; move to <strong>Item</strong>.</em></li>
+          <li class="full">(OrderID, ItemID) &rarr; Quantity
+            <em>Needs both halves &rarr; stays in <strong>OrderItem</strong>.</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Three relations after 2NF</h3>
+          <span class="badge warn">Passes 2NF &middot; inspect 3NF</span>
+        </div>
+        <div class="table-grid">
+          <section>
+            <p class="relation-label"><span>Order_Header</span><span class="relation-kind">Still impure</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th scope="col">OrderID<span class="key">PK</span></th><th scope="col">OrderDate</th><th scope="col">CustomerID</th>
+                  <th scope="col">CustomerName</th><th scope="col">CustomerPhone</th><th scope="col">CustomerAddress</th>
+                  <th scope="col">DesignerName</th><th scope="col">DesignerPhone</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td>O1001</td><td>2025-10-25</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+                  <tr><td>O1002</td><td>2025-10-26</td><td>C002</td><td>Rohan Patel</td><td>9988776655</td><td>Ahmedabad</td><td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td></tr>
+                  <tr><td>O1003</td><td>2025-10-27</td><td>C001</td><td class="watch-cell">Asha Mehta</td><td class="watch-cell">9876543210</td><td class="watch-cell">Mumbai</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+                  <tr><td>O1004</td><td>2025-10-28</td><td>C003</td><td>Neha Joshi</td><td>9876001234</td><td>Pune</td><td class="watch-cell">Priya Shah</td><td class="watch-cell">6376543254</td></tr>
+                  <tr><td>O1005</td><td>2025-10-29</td><td>C004</td><td>Isha Kapoor</td><td>9000001111</td><td>Delhi</td><td class="watch-cell">Mehul Jain</td><td class="watch-cell">5586894409</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <p class="relation-label"><span>Item</span><span class="relation-kind">Clean</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">ItemID<span class="key">PK</span></th><th scope="col">ItemName</th><th scope="col">Material</th><th scope="col">Price</th></tr></thead>
+                <tbody>
+                  <tr><td>P01</td><td>Ring</td><td>Diamond</td><td>55000</td></tr>
+                  <tr><td>P02</td><td>Necklace</td><td>Gold</td><td>72000</td></tr>
+                  <tr><td>P03</td><td>Bracelet</td><td>Silver</td><td>18000</td></tr>
+                  <tr><td>P04</td><td>Earring</td><td>Platinum</td><td>90000</td></tr>
+                  <tr><td>P05</td><td>Bracelet</td><td>Gold</td><td>25000</td></tr>
+                  <tr><td>P06</td><td>Necklace</td><td>Diamond</td><td>80000</td></tr>
+                  <tr><td>P07</td><td>Ring</td><td>Silver</td><td>20000</td></tr>
+                  <tr><td>P08</td><td>Ring</td><td>Gold</td><td>35000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <p class="relation-label"><span>OrderItem</span><span class="relation-kind">Bridge</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">OrderID<span class="key">PK, FK</span></th><th scope="col">ItemID<span class="key">PK, FK</span></th><th scope="col">Quantity</th></tr></thead>
+                <tbody>
+                  <tr><td>O1001</td><td>P01</td><td>1</td></tr>
+                  <tr><td>O1001</td><td>P02</td><td>1</td></tr>
+                  <tr><td>O1002</td><td>P03</td><td>2</td></tr>
+                  <tr><td>O1003</td><td>P04</td><td>1</td></tr>
+                  <tr><td>O1003</td><td>P05</td><td>2</td></tr>
+                  <tr><td>O1004</td><td>P06</td><td>1</td></tr>
+                  <tr><td>O1005</td><td>P07</td><td>1</td></tr>
+                  <tr><td>O1005</td><td>P08</td><td>1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <p class="caption"><strong>Gained:</strong> a piece of jewellery now exists independently of any sale, so a new design can be catalogued before it sells. <strong>Still wrong:</strong> the amber columns in Order_Header describe a customer or a designer, not an order.</p>
+      </div>
+
+      <div class="panel-nav">
+        <button class="nav-button prev" type="button" data-goto="1nf">&larr; Back to 1NF</button>
+        <button class="nav-button next" type="button" data-goto="3nf">Normalise to 3NF &rarr;</button>
+      </div>
+    </section>
+
+    <!-- ============================ 3NF ============================ -->
+    <section class="panel" id="panel-3nf" data-panel="3nf">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Step 3 &middot; Third Normal Form</p>
+          <h2>3NF: non-key facts describe the key, not each other</h2>
+          <p class="lead">Inside <code>Order_Header</code> two dependency chains are hiding. Break both, and each entity finally gets its own home.</p>
+        </div>
+        <div class="rule-chip">
+          <span class="chip-label">Rule applied</span>
+          <strong>3NF = 2NF + no transitive dependency among non-key fields.</strong>
+          <span class="chip-note">K &rarr; A &rarr; B means B belongs in A's table.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>The transitive chains being broken</h3></div>
+        <ul class="fd-list">
+          <li class="transitive">OrderID &rarr; CustomerID &rarr; CustomerName, CustomerPhone, CustomerAddress
+            <em>Customer details describe the customer, not the order &rarr; new <strong>Customer</strong> table.</em></li>
+          <li class="transitive">OrderID &rarr; DesignerName &rarr; DesignerPhone
+            <em>The phone describes the designer, not the order &rarr; new <strong>Designer</strong> table, keyed by a surrogate <code>DesignerID</code> so the name is never used as an identifier.</em></li>
+          <li class="full">OrderID &rarr; OrderDate, CustomerID, DesignerID
+            <em>What genuinely remains an order fact.</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Five relations after 3NF</h3>
+          <span class="badge pass">Passes 3NF</span>
+        </div>
+        <div class="table-grid">
+          <section>
+            <p class="relation-label"><span>Customer</span><span class="relation-kind">New home</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">CustomerID<span class="key">PK</span></th><th scope="col">CustomerName</th><th scope="col">CustomerPhone</th><th scope="col">CustomerAddress</th></tr></thead>
+                <tbody>
+                  <tr><td>C001</td><td>Asha Mehta</td><td>9876543210</td><td>Mumbai</td></tr>
+                  <tr><td>C002</td><td>Rohan Patel</td><td>9988776655</td><td>Ahmedabad</td></tr>
+                  <tr><td>C003</td><td>Neha Joshi</td><td>9876001234</td><td>Pune</td></tr>
+                  <tr><td>C004</td><td>Isha Kapoor</td><td>9000001111</td><td>Delhi</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <p class="relation-label"><span>Designer</span><span class="relation-kind">New home</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">DesignerID<span class="key">PK</span></th><th scope="col">DesignerName</th><th scope="col">DesignerPhone</th></tr></thead>
+                <tbody>
+                  <tr><td>D01</td><td>Priya Shah</td><td>6376543254</td></tr>
+                  <tr><td>D02</td><td>Mehul Jain</td><td>5586894409</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <p class="relation-label"><span>Orders</span><span class="relation-kind">Entity</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">OrderID<span class="key">PK</span></th><th scope="col">OrderDate</th><th scope="col">CustomerID<span class="key">FK</span></th><th scope="col">DesignerID<span class="key">FK</span></th></tr></thead>
+                <tbody>
+                  <tr><td>O1001</td><td>2025-10-25</td><td>C001</td><td>D01</td></tr>
+                  <tr><td>O1002</td><td>2025-10-26</td><td>C002</td><td>D02</td></tr>
+                  <tr><td>O1003</td><td>2025-10-27</td><td>C001</td><td>D01</td></tr>
+                  <tr><td>O1004</td><td>2025-10-28</td><td>C003</td><td>D01</td></tr>
+                  <tr><td>O1005</td><td>2025-10-29</td><td>C004</td><td>D02</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <p class="relation-label"><span>Item</span><span class="relation-kind">Entity</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">ItemID<span class="key">PK</span></th><th scope="col">ItemName</th><th scope="col">Material</th><th scope="col">Price</th></tr></thead>
+                <tbody>
+                  <tr><td>P01</td><td>Ring</td><td>Diamond</td><td>55000</td></tr>
+                  <tr><td>P02</td><td>Necklace</td><td>Gold</td><td>72000</td></tr>
+                  <tr><td>P03</td><td>Bracelet</td><td>Silver</td><td>18000</td></tr>
+                  <tr><td>P04</td><td>Earring</td><td>Platinum</td><td>90000</td></tr>
+                  <tr><td>P05</td><td>Bracelet</td><td>Gold</td><td>25000</td></tr>
+                  <tr><td>P06</td><td>Necklace</td><td>Diamond</td><td>80000</td></tr>
+                  <tr><td>P07</td><td>Ring</td><td>Silver</td><td>20000</td></tr>
+                  <tr><td>P08</td><td>Ring</td><td>Gold</td><td>35000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <p class="relation-label"><span>OrderItem</span><span class="relation-kind">Bridge</span></p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th scope="col">OrderID<span class="key">PK, FK</span></th><th scope="col">ItemID<span class="key">PK, FK</span></th><th scope="col">Quantity</th></tr></thead>
+                <tbody>
+                  <tr><td>O1001</td><td>P01</td><td>1</td></tr>
+                  <tr><td>O1001</td><td>P02</td><td>1</td></tr>
+                  <tr><td>O1002</td><td>P03</td><td>2</td></tr>
+                  <tr><td>O1003</td><td>P04</td><td>1</td></tr>
+                  <tr><td>O1003</td><td>P05</td><td>2</td></tr>
+                  <tr><td>O1004</td><td>P06</td><td>1</td></tr>
+                  <tr><td>O1005</td><td>P07</td><td>1</td></tr>
+                  <tr><td>O1005</td><td>P08</td><td>1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="note good">
+          <h4>Anomalies removed</h4>
+          <p><strong>Update:</strong> Asha moves city &rarr; one row in <code>Customer</code> changes. <strong>Insert:</strong> a new designer or an unsold piece can be added with no order. <strong>Delete:</strong> cancelling O1004 removes one order and one order line; <code>Necklace - Diamond</code> stays in the catalogue.</p>
+        </div>
+
+        <div class="note bad">
+          <h4>Trap to avoid: the dependency that is not there</h4>
+          <p>In this sample C001 is always handled by Priya Shah and C002 always by Mehul Jain, so it is tempting to write <code>CustomerID &rarr; DesignerID</code> and drop the designer from <code>Orders</code>. That is a coincidence of five rows, not a business rule &mdash; SparkleGems never promised a customer one permanent designer. A functional dependency must be guaranteed by the business, never inferred from a small sample.</p>
+        </div>
+      </div>
+
+      <div class="panel-nav">
+        <button class="nav-button prev" type="button" data-goto="2nf">&larr; Back to 2NF</button>
+        <button class="nav-button next" type="button" data-goto="bcnf">Test for BCNF &rarr;</button>
+      </div>
+    </section>
+
+    <!-- ============================ BCNF ============================ -->
+    <section class="panel" id="panel-bcnf" data-panel="bcnf">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Step 4 &middot; Boyce-Codd Normal Form</p>
+          <h2>BCNF: every determinant must be a candidate key</h2>
+          <p class="lead">BCNF is a stricter re-test, not a new split. List every determinant in every 3NF relation and ask one question of each: does it identify a whole row?</p>
+        </div>
+        <div class="rule-chip">
+          <span class="chip-label">Rule applied</span>
+          <strong>BCNF: for every non-trivial X &rarr; Y, X must be a superkey.</strong>
+          <span class="chip-note">3NF forgives a determinant that is a prime attribute. BCNF forgives nothing.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Determinant audit of the 3NF design</h3>
+          <span class="badge pass">Already in BCNF &mdash; no further split needed</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th scope="col">Relation</th><th scope="col">Determinant X</th><th scope="col">Determines Y</th>
+              <th scope="col">Is X a candidate key?</th><th scope="col">Verdict</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>Customer</td><td>CustomerID</td><td>Name, Phone, Address</td><td>Yes &mdash; primary key</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>Customer</td><td>CustomerPhone</td><td>CustomerID, Name, Address</td><td>Yes &mdash; phones are unique</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>Designer</td><td>DesignerID</td><td>Name, Phone</td><td>Yes &mdash; primary key</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>Designer</td><td>DesignerPhone</td><td>DesignerID, Name</td><td>Yes &mdash; phones are unique</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>Orders</td><td>OrderID</td><td>OrderDate, CustomerID, DesignerID</td><td>Yes &mdash; primary key</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>Item</td><td>ItemID</td><td>ItemName, Material, Price</td><td>Yes &mdash; primary key</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>Item</td><td>(ItemName, Material)</td><td>ItemID, Price</td><td>Yes &mdash; second candidate key</td><td class="good-cell">BCNF</td></tr>
+              <tr><td>OrderItem</td><td>(OrderID, ItemID)</td><td>Quantity</td><td>Yes &mdash; primary key</td><td class="good-cell">BCNF</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption"><strong>Conclusion:</strong> every determinant in the 3NF design is a candidate key, so the design satisfies BCNF as it stands. The five tables on the previous step are the final answer.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>Two details worth pausing on</h3></div>
+          <ol class="why-list">
+            <li><strong>Item has two candidate keys.</strong> <code>ItemID</code> and <code>(ItemName, Material)</code> both identify a piece, so the <code>UNIQUE (ItemName, Material)</code> constraint is not decoration &mdash; it is what stops "Ring / Gold" being catalogued twice at two prices.</li>
+            <li><strong>Why <code>DesignerID</code> and not <code>DesignerName</code>.</strong> Keying Designer on the name assumes no two designers ever share a name. The moment a second Priya Shah is hired, <code>DesignerName &rarr; DesignerPhone</code> stops being a key dependency and the relation breaks BCNF. The surrogate key removes that risk permanently.</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>What a BCNF failure would have looked like</h3></div>
+          <p class="caption" style="margin-top:0">Hypothetical &mdash; not SparkleGems' actual rule. Suppose the business said <em>"each designer works in exactly one material"</em> and the designer were recorded per order line:</p>
+          <ul class="fd-list" style="margin-top:12px">
+            <li class="partial">Key = (OrderID, ItemID) &nbsp;&middot;&nbsp; DesignerID &rarr; Material
+              <em>Material is a prime attribute, so 3NF would allow this. BCNF rejects it: DesignerID is a determinant but not a superkey.</em></li>
+          </ul>
+          <p class="caption">The fix is the standard BCNF split: <code>DesignerMaterial(DesignerID, Material)</code> plus <code>OrderLineDesign(OrderID, ItemID, DesignerID)</code>. Note the price of BCNF &mdash; the original FD <code>(OrderID, ItemID) &rarr; Material</code> can no longer be enforced inside a single table. BCNF is always lossless, but not always dependency-preserving; 3NF is both.</p>
+        </div>
+      </div>
+
+      <div class="panel-nav">
+        <button class="nav-button prev" type="button" data-goto="3nf">&larr; Back to 3NF</button>
+        <button class="nav-button next" type="button" data-goto="final">See the final schema &rarr;</button>
+      </div>
+    </section>
+
+    <!-- ============================ FINAL ============================ -->
+    <section class="panel" id="panel-final" data-panel="final">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Step 5 &middot; Deliverable</p>
+          <h2>Final schema, DDL and the proof it is lossless</h2>
+          <p class="lead">Five relations in BCNF, the constraints that keep them honest, and one query that rebuilds the original sales report exactly.</p>
+        </div>
+        <div class="rule-chip">
+          <span class="chip-label">Result</span>
+          <strong>1 table &rarr; 5 tables. Zero repeated facts.</strong>
+          <span class="chip-note">Customer &middot; Designer &middot; Orders &middot; Item &middot; OrderItem</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Schema map</h3></div>
+        <svg class="diagram" viewBox="0 0 980 340" role="img" aria-label="Customer and Designer each point into Orders; Orders and Item each point into OrderItem.">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#5c7080"></path>
+            </marker>
+          </defs>
+
+          <g font-family="Inter, system-ui, sans-serif">
+            <!-- Customer -->
+            <rect x="20" y="20" width="210" height="96" rx="12" fill="#ffffff" stroke="#c9d9e4"></rect>
+            <rect x="20" y="20" width="210" height="30" rx="12" fill="#073b66"></rect>
+            <rect x="20" y="38" width="210" height="12" fill="#073b66"></rect>
+            <text x="34" y="40" fill="#ffffff" font-size="14" font-weight="700">Customer</text>
+            <text x="34" y="68" fill="#17324a" font-size="12.5" font-weight="700">CustomerID (PK)</text>
+            <text x="34" y="88" fill="#5c7080" font-size="12.5">Name, Phone, Address</text>
+
+            <!-- Designer -->
+            <rect x="20" y="210" width="210" height="96" rx="12" fill="#ffffff" stroke="#c9d9e4"></rect>
+            <rect x="20" y="210" width="210" height="30" rx="12" fill="#073b66"></rect>
+            <rect x="20" y="228" width="210" height="12" fill="#073b66"></rect>
+            <text x="34" y="230" fill="#ffffff" font-size="14" font-weight="700">Designer</text>
+            <text x="34" y="258" fill="#17324a" font-size="12.5" font-weight="700">DesignerID (PK)</text>
+            <text x="34" y="278" fill="#5c7080" font-size="12.5">Name, Phone</text>
+
+            <!-- Orders -->
+            <rect x="330" y="112" width="230" height="116" rx="12" fill="#ffffff" stroke="#087cad" stroke-width="2"></rect>
+            <rect x="330" y="112" width="230" height="30" rx="12" fill="#087cad"></rect>
+            <rect x="330" y="130" width="230" height="12" fill="#087cad"></rect>
+            <text x="344" y="132" fill="#ffffff" font-size="14" font-weight="700">Orders</text>
+            <text x="344" y="160" fill="#17324a" font-size="12.5" font-weight="700">OrderID (PK)</text>
+            <text x="344" y="180" fill="#5c7080" font-size="12.5">OrderDate</text>
+            <text x="344" y="200" fill="#5c7080" font-size="12.5">CustomerID (FK), DesignerID (FK)</text>
+
+            <!-- OrderItem -->
+            <rect x="660" y="112" width="290" height="116" rx="12" fill="#ffffff" stroke="#45b6d9" stroke-width="2"></rect>
+            <rect x="660" y="112" width="290" height="30" rx="12" fill="#45b6d9"></rect>
+            <rect x="660" y="130" width="290" height="12" fill="#45b6d9"></rect>
+            <text x="674" y="132" fill="#073b66" font-size="14" font-weight="700">OrderItem</text>
+            <text x="674" y="160" fill="#17324a" font-size="12.5" font-weight="700">OrderID (PK, FK), ItemID (PK, FK)</text>
+            <text x="674" y="180" fill="#5c7080" font-size="12.5">Quantity</text>
+            <text x="674" y="202" fill="#147a58" font-size="12" font-style="italic">LineTotal = Quantity &#215; Price (derived)</text>
+
+            <!-- Item -->
+            <rect x="660" y="20" width="290" height="70" rx="12" fill="#ffffff" stroke="#c9d9e4"></rect>
+            <rect x="660" y="20" width="290" height="30" rx="12" fill="#073b66"></rect>
+            <rect x="660" y="38" width="290" height="12" fill="#073b66"></rect>
+            <text x="674" y="40" fill="#ffffff" font-size="14" font-weight="700">Item</text>
+            <text x="674" y="70" fill="#17324a" font-size="12.5"><tspan font-weight="700">ItemID (PK)</tspan> &#183; ItemName, Material, Price</text>
+
+            <!-- connectors -->
+            <path d="M230 68 C 290 68, 290 150, 328 150" fill="none" stroke="#5c7080" stroke-width="2" marker-end="url(#arrow)"></path>
+            <path d="M230 258 C 290 258, 290 192, 328 192" fill="none" stroke="#5c7080" stroke-width="2" marker-end="url(#arrow)"></path>
+            <path d="M560 170 L 656 170" fill="none" stroke="#5c7080" stroke-width="2" marker-end="url(#arrow)"></path>
+            <path d="M805 92 L 805 108" fill="none" stroke="#5c7080" stroke-width="2" marker-end="url(#arrow)"></path>
+
+            <text x="246" y="104" fill="#5c7080" font-size="11.5">1 &#8594; many</text>
+            <text x="246" y="224" fill="#5c7080" font-size="11.5">1 &#8594; many</text>
+            <text x="572" y="162" fill="#5c7080" font-size="11.5">1 &#8594; many</text>
+            <text x="815" y="104" fill="#5c7080" font-size="11.5">1 &#8594; many</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>DDL &mdash; PostgreSQL / standard SQL</h3></div>
+<pre><span class="cm">-- Final BCNF schema for SparkleGems</span>
+
+<span class="kw">CREATE TABLE</span> Customer (
+  CustomerID      <span class="kw">CHAR</span>(4)      <span class="kw">PRIMARY KEY</span>,
+  CustomerName    <span class="kw">VARCHAR</span>(60)  <span class="kw">NOT NULL</span>,
+  CustomerPhone   <span class="kw">VARCHAR</span>(15)  <span class="kw">NOT NULL UNIQUE</span>,
+  CustomerAddress <span class="kw">VARCHAR</span>(80)  <span class="kw">NOT NULL</span>
+);
+
+<span class="kw">CREATE TABLE</span> Designer (
+  DesignerID    <span class="kw">CHAR</span>(3)     <span class="kw">PRIMARY KEY</span>,
+  DesignerName  <span class="kw">VARCHAR</span>(60) <span class="kw">NOT NULL</span>,
+  DesignerPhone <span class="kw">VARCHAR</span>(15) <span class="kw">NOT NULL UNIQUE</span>
+);
+
+<span class="kw">CREATE TABLE</span> Item (
+  ItemID   <span class="kw">CHAR</span>(3)       <span class="kw">PRIMARY KEY</span>,
+  ItemName <span class="kw">VARCHAR</span>(30)   <span class="kw">NOT NULL</span>,
+  Material <span class="kw">VARCHAR</span>(30)   <span class="kw">NOT NULL</span>,
+  Price    <span class="kw">NUMERIC</span>(10,2) <span class="kw">NOT NULL CHECK</span> (Price &gt; 0),
+  <span class="kw">UNIQUE</span> (ItemName, Material)   <span class="cm">-- second candidate key</span>
+);
+
+<span class="kw">CREATE TABLE</span> Orders (
+  OrderID    <span class="kw">CHAR</span>(5) <span class="kw">PRIMARY KEY</span>,
+  OrderDate  <span class="kw">DATE</span>    <span class="kw">NOT NULL</span>,
+  CustomerID <span class="kw">CHAR</span>(4) <span class="kw">NOT NULL REFERENCES</span> Customer(CustomerID),
+  DesignerID <span class="kw">CHAR</span>(3) <span class="kw">NOT NULL REFERENCES</span> Designer(DesignerID)
+);
+
+<span class="kw">CREATE TABLE</span> OrderItem (
+  OrderID  <span class="kw">CHAR</span>(5) <span class="kw">REFERENCES</span> Orders(OrderID) <span class="kw">ON DELETE CASCADE</span>,
+  ItemID   <span class="kw">CHAR</span>(3) <span class="kw">REFERENCES</span> Item(ItemID),
+  Quantity <span class="kw">INT</span>     <span class="kw">NOT NULL CHECK</span> (Quantity &gt; 0),
+  <span class="kw">PRIMARY KEY</span> (OrderID, ItemID)
+);</pre>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Seed data</h3></div>
+<pre><span class="kw">INSERT INTO</span> Customer <span class="kw">VALUES</span>
+ (<span class="st">'C001'</span>,<span class="st">'Asha Mehta'</span> ,<span class="st">'9876543210'</span>,<span class="st">'Mumbai'</span>),
+ (<span class="st">'C002'</span>,<span class="st">'Rohan Patel'</span>,<span class="st">'9988776655'</span>,<span class="st">'Ahmedabad'</span>),
+ (<span class="st">'C003'</span>,<span class="st">'Neha Joshi'</span> ,<span class="st">'9876001234'</span>,<span class="st">'Pune'</span>),
+ (<span class="st">'C004'</span>,<span class="st">'Isha Kapoor'</span>,<span class="st">'9000001111'</span>,<span class="st">'Delhi'</span>);
+
+<span class="kw">INSERT INTO</span> Designer <span class="kw">VALUES</span>
+ (<span class="st">'D01'</span>,<span class="st">'Priya Shah'</span>,<span class="st">'6376543254'</span>),
+ (<span class="st">'D02'</span>,<span class="st">'Mehul Jain'</span>,<span class="st">'5586894409'</span>);
+
+<span class="kw">INSERT INTO</span> Item <span class="kw">VALUES</span>
+ (<span class="st">'P01'</span>,<span class="st">'Ring'</span>    ,<span class="st">'Diamond'</span> ,55000),
+ (<span class="st">'P02'</span>,<span class="st">'Necklace'</span>,<span class="st">'Gold'</span>    ,72000),
+ (<span class="st">'P03'</span>,<span class="st">'Bracelet'</span>,<span class="st">'Silver'</span>  ,18000),
+ (<span class="st">'P04'</span>,<span class="st">'Earring'</span> ,<span class="st">'Platinum'</span>,90000),
+ (<span class="st">'P05'</span>,<span class="st">'Bracelet'</span>,<span class="st">'Gold'</span>    ,25000),
+ (<span class="st">'P06'</span>,<span class="st">'Necklace'</span>,<span class="st">'Diamond'</span> ,80000),
+ (<span class="st">'P07'</span>,<span class="st">'Ring'</span>    ,<span class="st">'Silver'</span>  ,20000),
+ (<span class="st">'P08'</span>,<span class="st">'Ring'</span>    ,<span class="st">'Gold'</span>    ,35000);
+
+<span class="kw">INSERT INTO</span> Orders <span class="kw">VALUES</span>
+ (<span class="st">'O1001'</span>,<span class="kw">DATE</span> <span class="st">'2025-10-25'</span>,<span class="st">'C001'</span>,<span class="st">'D01'</span>),
+ (<span class="st">'O1002'</span>,<span class="kw">DATE</span> <span class="st">'2025-10-26'</span>,<span class="st">'C002'</span>,<span class="st">'D02'</span>),
+ (<span class="st">'O1003'</span>,<span class="kw">DATE</span> <span class="st">'2025-10-27'</span>,<span class="st">'C001'</span>,<span class="st">'D01'</span>),
+ (<span class="st">'O1004'</span>,<span class="kw">DATE</span> <span class="st">'2025-10-28'</span>,<span class="st">'C003'</span>,<span class="st">'D01'</span>),
+ (<span class="st">'O1005'</span>,<span class="kw">DATE</span> <span class="st">'2025-10-29'</span>,<span class="st">'C004'</span>,<span class="st">'D02'</span>);
+
+<span class="kw">INSERT INTO</span> OrderItem <span class="kw">VALUES</span>
+ (<span class="st">'O1001'</span>,<span class="st">'P01'</span>,1), (<span class="st">'O1001'</span>,<span class="st">'P02'</span>,1),
+ (<span class="st">'O1002'</span>,<span class="st">'P03'</span>,2),
+ (<span class="st">'O1003'</span>,<span class="st">'P04'</span>,1), (<span class="st">'O1003'</span>,<span class="st">'P05'</span>,2),
+ (<span class="st">'O1004'</span>,<span class="st">'P06'</span>,1),
+ (<span class="st">'O1005'</span>,<span class="st">'P07'</span>,1), (<span class="st">'O1005'</span>,<span class="st">'P08'</span>,1);</pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Proof: the join rebuilds the original report</h3>
+          <span class="badge pass">Lossless</span>
+        </div>
+<pre><span class="kw">SELECT</span> o.OrderID, o.OrderDate,
+       c.CustomerID, c.CustomerName, c.CustomerPhone, c.CustomerAddress,
+       i.ItemName, i.Material, oi.Quantity, i.Price,
+       oi.Quantity * i.Price <span class="kw">AS</span> LineTotal,
+       d.DesignerName, d.DesignerPhone
+<span class="kw">FROM</span> Orders o
+<span class="kw">JOIN</span> Customer  c  <span class="kw">ON</span> c.CustomerID = o.CustomerID
+<span class="kw">JOIN</span> Designer  d  <span class="kw">ON</span> d.DesignerID = o.DesignerID
+<span class="kw">JOIN</span> OrderItem oi <span class="kw">ON</span> oi.OrderID   = o.OrderID
+<span class="kw">JOIN</span> Item      i  <span class="kw">ON</span> i.ItemID     = oi.ItemID
+<span class="kw">ORDER BY</span> o.OrderID, i.ItemID;</pre>
+        <p class="caption">Eight rows out &mdash; the same eight order lines the 1NF table held, with no invented rows and none lost. Because every split was along a functional dependency whose determinant became the primary key of the new table, each join is guaranteed lossless.</p>
+
+        <div class="table-wrap" style="margin-top:16px">
+          <table>
+            <thead><tr>
+              <th scope="col">OrderID</th><th scope="col">Customer</th><th scope="col">Item</th>
+              <th scope="col">Qty</th><th scope="col">Price</th><th scope="col">LineTotal</th>
+              <th scope="col">Designer</th><th scope="col">Order total</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>O1001</td><td>Asha Mehta</td><td>Ring - Diamond</td><td>1</td><td>55000</td><td>55000</td><td>Priya Shah</td><td class="good-cell" rowspan="2">127000</td></tr>
+              <tr><td>O1001</td><td>Asha Mehta</td><td>Necklace - Gold</td><td>1</td><td>72000</td><td>72000</td><td>Priya Shah</td></tr>
+              <tr><td>O1002</td><td>Rohan Patel</td><td>Bracelet - Silver</td><td>2</td><td>18000</td><td>36000</td><td>Mehul Jain</td><td class="good-cell">36000</td></tr>
+              <tr><td>O1003</td><td>Asha Mehta</td><td>Earring - Platinum</td><td>1</td><td>90000</td><td>90000</td><td>Priya Shah</td><td class="good-cell" rowspan="2">140000</td></tr>
+              <tr><td>O1003</td><td>Asha Mehta</td><td>Bracelet - Gold</td><td>2</td><td>25000</td><td>50000</td><td>Priya Shah</td></tr>
+              <tr><td>O1004</td><td>Neha Joshi</td><td>Necklace - Diamond</td><td>1</td><td>80000</td><td>80000</td><td>Priya Shah</td><td class="good-cell">80000</td></tr>
+              <tr><td>O1005</td><td>Isha Kapoor</td><td>Ring - Silver</td><td>1</td><td>20000</td><td>20000</td><td>Mehul Jain</td><td class="good-cell" rowspan="2">55000</td></tr>
+              <tr><td>O1005</td><td>Isha Kapoor</td><td>Ring - Gold</td><td>1</td><td>35000</td><td>35000</td><td>Mehul Jain</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Answer sheet in one line per stage</h3></div>
+        <ol class="why-list">
+          <li><strong>UNF</strong> &mdash; <code>SparkleGemsSales(OrderID, OrderDate, CustomerID, CustomerName, CustomerPhone, CustomerAddress, "ItemName, Material", Quantity, Price, DesignerName, DesignerPhone)</code></li>
+          <li><strong>1NF</strong> &mdash; <code>OrderLine(<u>OrderID, ItemID</u>, OrderDate, CustomerID, CustomerName, CustomerPhone, CustomerAddress, ItemName, Material, Quantity, Price, DesignerName, DesignerPhone)</code></li>
+          <li><strong>2NF</strong> &mdash; <code>Order_Header(<u>OrderID</u>, OrderDate, CustomerID, CustomerName, CustomerPhone, CustomerAddress, DesignerName, DesignerPhone)</code> &nbsp;+&nbsp; <code>Item(<u>ItemID</u>, ItemName, Material, Price)</code> &nbsp;+&nbsp; <code>OrderItem(<u>OrderID, ItemID</u>, Quantity)</code></li>
+          <li><strong>3NF</strong> &mdash; <code>Customer(<u>CustomerID</u>, CustomerName, CustomerPhone, CustomerAddress)</code> &nbsp;+&nbsp; <code>Designer(<u>DesignerID</u>, DesignerName, DesignerPhone)</code> &nbsp;+&nbsp; <code>Orders(<u>OrderID</u>, OrderDate, CustomerID, DesignerID)</code> &nbsp;+&nbsp; <code>Item(<u>ItemID</u>, ItemName, Material, Price)</code> &nbsp;+&nbsp; <code>OrderItem(<u>OrderID, ItemID</u>, Quantity)</code></li>
+          <li><strong>BCNF</strong> &mdash; unchanged; every determinant in the 3NF design is already a candidate key.</li>
+        </ol>
+      </div>
+
+      <div class="panel-nav">
+        <button class="nav-button prev" type="button" data-goto="bcnf">&larr; Back to BCNF</button>
+        <button class="nav-button next" type="button" data-goto="brief">Restart from the brief</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-foot">
+    Worked solution for <strong>Normalisation Question Lab 2 &mdash; SparkleGems</strong> &middot; companion to the Normalisation Lab.<br>
+    Use &larr; and &rarr; to move between stages.
+  </footer>
+
+  <script>
+    const order = ["brief", "1nf", "2nf", "3nf", "bcnf", "final"];
+    let active = "brief";
+
+    function show(step) {
+      if (!order.includes(step)) return;
+      active = step;
+      document.querySelectorAll("[data-panel]").forEach(panel => {
+        panel.classList.toggle("is-active", panel.dataset.panel === step);
+      });
+      document.querySelectorAll("[data-step]").forEach(button => {
+        button.setAttribute("aria-selected", String(button.dataset.step === step));
+      });
+      if (!document.body.classList.contains("show-all")) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+
+    document.getElementById("stepper").addEventListener("click", event => {
+      const button = event.target.closest("[data-step]");
+      if (button) show(button.dataset.step);
+    });
+
+    document.querySelectorAll("[data-goto]").forEach(button => {
+      button.addEventListener("click", () => show(button.dataset.goto));
+    });
+
+    document.getElementById("showAllButton").addEventListener("click", event => {
+      const on = event.currentTarget.getAttribute("aria-pressed") === "true";
+      document.body.classList.toggle("show-all", !on);
+      event.currentTarget.setAttribute("aria-pressed", String(!on));
+      event.currentTarget.textContent = on ? "Show all steps" : "Show one step";
+    });
+
+    document.getElementById("printButton").addEventListener("click", () => window.print());
+
+    document.addEventListener("keydown", event => {
+      if (document.body.classList.contains("show-all")) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const index = order.indexOf(active);
+      const next = event.key === "ArrowRight"
+        ? Math.min(order.length - 1, index + 1)
+        : Math.max(0, index - 1);
+      if (next !== index) show(order[next]);
+    });
+  </script>
+</body>
+</html>
